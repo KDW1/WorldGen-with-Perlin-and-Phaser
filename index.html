@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/perlin-noise@0.0.1/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.51.0/dist/phaser.min.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>World Gen with Phaser</title>
+  </head>
+  <body>
+    <div style="display: flex">
+      <div>
+        Heat Map
+        <div
+          id="temp"
+          style="display: grid; grid: 90%; height: 500px; width: 500px"
+        ></div>
+      </div>
+      <div style="margin-left: 10px">
+        Moisture Map
+        <div
+          id="moisture"
+          style="display: grid; grid: 90%; height: 500px; width: 500px"
+        ></div>
+      </div>
+      <div style="margin-left: 10px">
+        Altitude Map
+        <div
+          id="alt"
+          style="display: grid; grid: 90%; height: 500px; width: 500px"
+        ></div>
+      </div>
+    </div>
+    <div style="margin-left: 10px">
+      Map
+      <div
+        id="map"
+        style="display: grid; grid: 90%; max-height: 500px; max-width: 500px;
+        "
+      ></div>
+    </div>
+    <script type="module">
+      // import { createNoise2D } from "https://cdn.skypack.dev/simplex-noise@4.0.0";
+
+      let tileMap = [];
+
+      var image = new Image();
+      const widthOfOnePiece = 25;
+      const heightOfOnePiece = 25;
+      const numColsToCut = 4;
+      const numRowsToCut = 4;
+
+      let grids = ["temp", "moisture", "alt"];
+      let noiseMatrices = []
+
+      const ROWS = 60;
+      const COLUMNS = 60;
+
+      const map = document.getElementById("map");
+      let altGrid = []
+      let mapArr = Array(ROWS).fill(Array(COLUMNS));
+
+      function noiseAssembly(levels = null) {
+      for (let k = 0; k < grids.length; k++) {
+        let noiseGrid = document.getElementById(grids[k]);
+        const noise2D = generatePerlinNoise(ROWS, COLUMNS);
+        noiseMatrices.push(noise2D)
+        // console.log(noise2D);
+
+        let matrix = Array(ROWS).fill(Array(COLUMNS));
+        noiseGrid.style.gridTemplateRows = `repeat(${ROWS}, minmax(0, 1fr))`;
+        noiseGrid.style.gridTemplateColumns = `repeat(${COLUMNS}, minmax(0, 1fr))`;
+        for (let i = 0; i < ROWS; i++) {
+          for (let j = 0; j < COLUMNS; j++) {
+            // let rand = Math.random()
+            let rand = noise2D[(i * ROWS) + j];
+            if (levels) rand = Math.round(rand * (levels - 1)) / (levels - 1);
+            matrix[i][j] = rand;
+            if(grids[k] == "alt") {
+
+            }
+            let text = document.createElement("div");
+            text.style.width = "100%";
+            text.style.height = "100%";
+            // let initial = [245, 66, 158] //magenta
+            // let final = [255, 255, 255] //blue
+            // let vector = [final[0] - initial[0], final[1] - initial[1], final[2] - initial[2]]
+            // let color = [initial[0] + vector[0] * rand, initial[1] + vector[1] * rand, initial[2] + vector[2] * rand]
+            // text.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+            text.style.backgroundColor = "#000";
+            text.style.opacity = 1 - rand;
+            noiseGrid.appendChild(text);
+          }
+        }
+        // console.log(`${ROWS} by ${COLUMNS} matrix:`, matrix);
+      }
+      }
+
+      function phaserSetup() {
+        var config = {
+          type: Phaser.AUTO,
+          width: 800,
+          height: 600,
+          scene: {
+            preload: preload,
+            create: create,
+          },
+        };
+
+        var game = new Phaser.Game(config);
+        function preload() {
+          this.load.image("tiles", "./public/tiles/TileMap.png");
+        }
+
+        function create() {
+          this.add.image(400, 300, "tiles");
+          
+          const map = this.make.tilemap({key: "landSet"})
+        }
+        
+      }
+
+      function assembleMap() {
+        for(let i = 0; i < ROWS; i++) {
+          for(let j = 0; j < COLUMNS; j++) {
+            let originalTemp = noiseMatrices[0][(i * ROWS) + j]
+            let originalMoisture = noiseMatrices[1][(i * ROWS) + j]
+            let temp = Math.floor((originalTemp * numRowsToCut))
+            let moisture = Math.floor((originalMoisture * 3))
+            let alt = noiseMatrices[1][(i * ROWS) + j]
+            if(i % 50 == 0 && j % 50 == 0 || originalTemp > 0.2 || originalMoisture > 0.2) {
+              // console.log(`${i}, ${j}`)
+              // console.log(`Temp: ${originalTemp}, Moisture: ${originalMoisture}, Altitude: ${alt}`)
+              // console.log(`Calculate Temp: ${originalTemp*numRowsToCut}, Calculated Moisture: ${originalMoisture*numColsToCut}\n`)
+              // console.log(`Formatted Temp: ${temp}, Formatted Moisture: ${moisture}\n`)
+            }
+            map.style.gridTemplateRows = `repeat(${ROWS}, minmax(0, 1fr))`;
+            map.style.gridTemplateColumns = `repeat(${COLUMNS}, minmax(0, 1fr))`;
+            let image = new Image()
+            let index = (temp * numRowsToCut) + moisture
+            const threshold = 0.5
+            if(alt <= threshold) {
+              // console.log("Lower than ", threshold)
+              index = (Math.floor((alt/threshold) * numColsToCut) * numRowsToCut)
+              index += 3
+              console.log("Index: ", index)
+              // console.log(tileMap[index])
+            }
+            // console.log(`Index: ${index}`)
+            image.src = tileMap[index]
+            map.appendChild(image)
+          }
+        }
+      }
+
+      image.onload = cutImageUp;
+      image.src = "/public/tiles/TileMap.png";
+      function cutImageUp() {
+        var imagePieces = [];
+        for (var x = 0; x < numRowsToCut; ++x) {
+          for (var y = 0; y < numColsToCut; ++y) {
+            var canvas = document.createElement("canvas");
+            canvas.width = widthOfOnePiece;
+            canvas.height = heightOfOnePiece;
+            var context = canvas.getContext("2d");
+            context.drawImage(
+              image,
+              y * widthOfOnePiece,
+              x * heightOfOnePiece,
+              widthOfOnePiece,
+              heightOfOnePiece,
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+            // console.log(canvas.toDataURL())
+            tileMap.push(canvas.toDataURL());
+          }
+        }
+        console.log("Map: ", tileMap);
+        noiseAssembly(10)
+        assembleMap()
+// imagePieces now contains data urls of all the pieces of the image
+      }
+    </script>
+    <script>
+      function generatePerlinNoise(width, height, options) {
+        options = options || {};
+        var octaveCount = options.octaveCount || 4;
+        var amplitude = options.amplitude || 0.1;
+        var persistence = options.persistence || 0.2;
+        var whiteNoise = generateWhiteNoise(width, height);
+
+        var smoothNoiseList = new Array(octaveCount);
+        var i;
+        for (i = 0; i < octaveCount; ++i) {
+          smoothNoiseList[i] = generateSmoothNoise(i);
+        }
+        var perlinNoise = new Array(width * height);
+        var totalAmplitude = 0;
+        // blend noise together
+        for (i = octaveCount - 1; i >= 0; --i) {
+          amplitude *= persistence;
+          totalAmplitude += amplitude;
+
+          for (var j = 0; j < perlinNoise.length; ++j) {
+            perlinNoise[j] = perlinNoise[j] || 0;
+            perlinNoise[j] += smoothNoiseList[i][j] * amplitude;
+          }
+        }
+        // normalization
+        for (i = 0; i < perlinNoise.length; ++i) {
+          perlinNoise[i] /= totalAmplitude;
+        }
+
+        return perlinNoise;
+
+        function generateSmoothNoise(octave) {
+          var noise = new Array(width * height);
+          var samplePeriod = Math.pow(2, octave);
+          var sampleFrequency = 1 / samplePeriod;
+          var noiseIndex = 0;
+          for (var y = 0; y < height; ++y) {
+            var sampleY0 = Math.floor(y / samplePeriod) * samplePeriod;
+            var sampleY1 = (sampleY0 + samplePeriod) % height;
+            var vertBlend = (y - sampleY0) * sampleFrequency;
+            for (var x = 0; x < width; ++x) {
+              var sampleX0 = Math.floor(x / samplePeriod) * samplePeriod;
+              var sampleX1 = (sampleX0 + samplePeriod) % width;
+              var horizBlend = (x - sampleX0) * sampleFrequency;
+
+              // blend top two corners
+              var top = interpolate(
+                whiteNoise[sampleY0 * width + sampleX0],
+                whiteNoise[sampleY1 * width + sampleX0],
+                vertBlend
+              );
+              // blend bottom two corners
+              var bottom = interpolate(
+                whiteNoise[sampleY0 * width + sampleX1],
+                whiteNoise[sampleY1 * width + sampleX1],
+                vertBlend
+              );
+              // final blend
+              noise[noiseIndex] = interpolate(top, bottom, horizBlend);
+              noiseIndex += 1;
+            }
+          }
+          return noise;
+        }
+      }
+      function generateWhiteNoise(width, height) {
+        var noise = new Array(width * height);
+        for (var i = 0; i < noise.length; ++i) {
+          noise[i] = Math.random();
+        }
+        return noise;
+      }
+      function interpolate(x0, x1, alpha) {
+        return x0 * (1 - alpha) + alpha * x1;
+      }
+    </script>
+  </body>
+</html>
