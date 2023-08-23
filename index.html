@@ -54,8 +54,8 @@
       let grids = ["temp", "moisture", "alt"];
       let noiseMatrices = []
 
-      const ROWS = 60;
-      const COLUMNS = 60;
+      const ROWS = 120;
+      const COLUMNS = 120;
 
       const map = document.getElementById("map");
       let altGrid = []
@@ -128,7 +128,7 @@
             let originalMoisture = noiseMatrices[1][(i * ROWS) + j]
             let temp = Math.floor((originalTemp * numRowsToCut))
             let moisture = Math.floor((originalMoisture * 3))
-            let alt = noiseMatrices[1][(i * ROWS) + j]
+            let alt = noiseMatrices[2][(i * ROWS) + j]
             if(i % 50 == 0 && j % 50 == 0 || originalTemp > 0.2 || originalMoisture > 0.2) {
               // console.log(`${i}, ${j}`)
               // console.log(`Temp: ${originalTemp}, Moisture: ${originalMoisture}, Altitude: ${alt}`)
