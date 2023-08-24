@@ -33,10 +33,12 @@
       </div>
     </div>
     <div style="margin-left: 10px">
-      Map
+      <h1 style="text-align: center; font-weight: 900; font-family: Arial, Helvetica, sans-serif; width: min-content; margin: 0 auto; border-bottom: 4px solid; border-color: antiquewhite;">
+        Map
+      </h1>
       <div
         id="map"
-        style="display: grid; grid: 90%; max-height: 500px; max-width: 500px;
+        style="display: grid; margin: auto 12px 48px; grid: 90%; max-height: 500px; max-width: 500px;
         "
       ></div>
     </div>
@@ -48,14 +50,14 @@
       var image = new Image();
       const widthOfOnePiece = 25;
       const heightOfOnePiece = 25;
-      const numColsToCut = 4;
+      const numColsToCut = 5;
       const numRowsToCut = 4;
 
       let grids = ["temp", "moisture", "alt"];
       let noiseMatrices = []
 
-      const ROWS = 120;
-      const COLUMNS = 120;
+      const ROWS = 60;
+      const COLUMNS = 60;
 
       const map = document.getElementById("map");
       let altGrid = []
@@ -126,7 +128,7 @@
           for(let j = 0; j < COLUMNS; j++) {
             let originalTemp = noiseMatrices[0][(i * ROWS) + j]
             let originalMoisture = noiseMatrices[1][(i * ROWS) + j]
-            let temp = Math.floor((originalTemp * numRowsToCut))
+            let temp = Math.floor((originalTemp * numRowsToCut)) //0-numRowsToCut
             let moisture = Math.floor((originalMoisture * 3))
             let alt = noiseMatrices[2][(i * ROWS) + j]
             if(i % 50 == 0 && j % 50 == 0 || originalTemp > 0.2 || originalMoisture > 0.2) {
@@ -138,15 +140,30 @@
             map.style.gridTemplateRows = `repeat(${ROWS}, minmax(0, 1fr))`;
             map.style.gridTemplateColumns = `repeat(${COLUMNS}, minmax(0, 1fr))`;
             let image = new Image()
-            let index = (temp * numRowsToCut) + moisture
-            const threshold = 0.5
-            if(alt <= threshold) {
+            let index = (temp * numColsToCut) + moisture
+            const oceanThreshold = 0.5
+            const mountainThreshold = 0.7
+
+            if(alt <= oceanThreshold) {
+              // console.log(alt)
               // console.log("Lower than ", threshold)
-              index = (Math.floor((alt/threshold) * numColsToCut) * numRowsToCut)
+              index = (Math.floor((alt/oceanThreshold) * numRowsToCut)) * numColsToCut //Scale between the number of rows
+              console.log("Row: ", index)
               index += 3
               console.log("Index: ", index)
               // console.log(tileMap[index])
+            } 
+            if(alt > mountainThreshold) {
+              let r = (1-alt)/(1-mountainThreshold) //To scale between the number of rows
+              r = Math.floor(r*numRowsToCut)*numColsToCut
+              index = r + 4
+              // console.log("index: ", index)
             }
+            //  if(alt >= mountainThreshold) {
+            //   index = (Math.floor(((1-alt)/(1-mountainThreshold)) * numRowsToCut)) * numRowsToCut
+            //   // index += 4
+            //   console.log("Index: ", index)
+            // }
             // console.log(`Index: ${index}`)
             image.src = tileMap[index]
             map.appendChild(image)
@@ -158,16 +175,16 @@
       image.src = "/public/tiles/TileMap.png";
       function cutImageUp() {
         var imagePieces = [];
-        for (var x = 0; x < numRowsToCut; ++x) {
-          for (var y = 0; y < numColsToCut; ++y) {
+        for (var y = 0; y < numRowsToCut; y++) {
+          for (var  x= 0;  x< numColsToCut; x++) {
             var canvas = document.createElement("canvas");
             canvas.width = widthOfOnePiece;
             canvas.height = heightOfOnePiece;
             var context = canvas.getContext("2d");
             context.drawImage(
               image,
-              y * widthOfOnePiece,
-              x * heightOfOnePiece,
+              x * widthOfOnePiece,
+              y * heightOfOnePiece,
               widthOfOnePiece,
               heightOfOnePiece,
               0,
@@ -180,7 +197,7 @@
           }
         }
         console.log("Map: ", tileMap);
-        noiseAssembly(10)
+        noiseAssembly()
         assembleMap()
 // imagePieces now contains data urls of all the pieces of the image
       }
