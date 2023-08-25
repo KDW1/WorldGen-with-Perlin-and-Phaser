@@ -53,7 +53,7 @@
       </div>
       <div
         id="map"
-        style="display: grid; margin: 12px auto 64px; grid: 90%; height: max-content; width: max-content; max-height: 500px; max-width: 500px;
+        style="display: grid; margin: 12px auto 64px; grid: 90%; height: max-content; width: max-content; max-height: 600px; max-width: 600px;
         "
       ></div>
     </div>
@@ -71,9 +71,9 @@
       let grids = ["temp", "moisture", "alt"];
       let noiseMatrices = []
 
-      let ROWS = 120;
-      let COLUMNS = 120;
-      let cutoff = 30
+      let ROWS = 90;
+      let COLUMNS = 90;
+      let cutoff = 20 //Sometimes the edges look very odd
       let shrinkGrow = 1;
 
       const map = document.getElementById("map");
@@ -148,8 +148,8 @@
         console.log(`Map is ${ROWS * shrinkGrow - cutoff} by ${COLUMNS * shrinkGrow - cutoff}.\nNormal Rows is ${ROWS} by ${COLUMNS}, but the factor is ${shrinkGrow} with a cutoff of ${cutoff}`)
         for(let i = 0; i < ROWS * shrinkGrow - cutoff; i++) {
           for(let j = 0; j < COLUMNS * shrinkGrow - cutoff; j++) {
-            let originalTemp = noiseMatrices[0][(Math.floor(i/shrinkGrow) * COLUMNS) + Math.floor(j/shrinkGrow)]
-            let originalMoisture = noiseMatrices[1][(Math.floor(i/shrinkGrow) * COLUMNS) + Math.floor(j/shrinkGrow)]
+            let originalTemp = noiseMatrices[0][(Math.floor(i/shrinkGrow) * ROWS) + Math.floor(j/shrinkGrow)]
+            let originalMoisture = noiseMatrices[1][(Math.floor(i/shrinkGrow) * ROWS) + Math.floor(j/shrinkGrow)]
             let temp = Math.floor((originalTemp * numRowsToCut)) //0-numRowsToCut
             let moisture = Math.floor((originalMoisture * 3))
             let alt = noiseMatrices[2][(Math.floor(i/shrinkGrow) * ROWS) + Math.floor(j/shrinkGrow)]
