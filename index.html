@@ -17,14 +17,14 @@
           style="display: grid; grid: 90%; height: 500px; width: 500px"
         ></div>
       </div>
-      <div style="margin-left: 10px">
+      <div style="margin-left: 2px">
         Moisture Map
         <div
           id="moisture"
           style="display: grid; grid: 90%; height: 500px; width: 500px"
         ></div>
       </div>
-      <div style="margin-left: 10px">
+      <div style="margin-left: 2px">
         Altitude Map
         <div
           id="alt"
@@ -33,16 +33,31 @@
       </div>
     </div>
     <div style="margin-left: 10px">
-      <h1 style="text-align: center; font-weight: 900; font-family: Arial, Helvetica, sans-serif; width: min-content; margin: 0 auto; border-bottom: 4px solid; border-color: antiquewhite;">
-        Map
-      </h1>
+      <div style="display: flexbox;">
+        <h1 style="text-align: center; font-weight: 900; font-family: Arial, Helvetica, sans-serif; width: min-content; margin: 0 auto; border-bottom: 4px solid; border-color: antiquewhite;">
+          Map
+        </h1>
+        <div style="margin: 0 auto; width: max-content;">
+          <div>
+            <input placeholder="Width..." style="border-width: 0px 0px 4px; width: min-content; font-weight: 600; outline: none; border-color: antiquewhite;" type="number" id="width">
+            px
+          </div>
+          <div>
+            <input placeholder="Height..." style="border-width: 0px 0px 4px; width: min-content; font-weight: 600; outline: none; border-color: antiquewhite;" type="number" id="height">
+            px
+          </div>
+          <button onclick="generateMap()">
+            Generate Map
+          </button>
+        </div>
+      </div>
       <div
         id="map"
-        style="display: grid; margin: auto 12px 48px; grid: 90%; max-height: 500px; max-width: 500px;
+        style="display: grid; margin: 12px auto 64px; grid: 90%; height: max-content; width: max-content; max-height: 500px; max-width: 500px;
         "
       ></div>
     </div>
-    <script type="module">
+    <script>
       // import { createNoise2D } from "https://cdn.skypack.dev/simplex-noise@4.0.0";
 
       let tileMap = [];
@@ -56,8 +71,10 @@
       let grids = ["temp", "moisture", "alt"];
       let noiseMatrices = []
 
-      const ROWS = 60;
-      const COLUMNS = 60;
+      let ROWS = 120;
+      let COLUMNS = 120;
+      let cutoff = 30
+      let shrinkGrow = 1;
 
       const map = document.getElementById("map");
       let altGrid = []
@@ -66,6 +83,7 @@
       function noiseAssembly(levels = null) {
       for (let k = 0; k < grids.length; k++) {
         let noiseGrid = document.getElementById(grids[k]);
+        noiseGrid.innerHTML = ""
         const noise2D = generatePerlinNoise(ROWS, COLUMNS);
         noiseMatrices.push(noise2D)
         // console.log(noise2D);
@@ -124,33 +142,42 @@
       }
 
       function assembleMap() {
-        for(let i = 0; i < ROWS; i++) {
-          for(let j = 0; j < COLUMNS; j++) {
-            let originalTemp = noiseMatrices[0][(i * ROWS) + j]
-            let originalMoisture = noiseMatrices[1][(i * ROWS) + j]
+        map.innerHTML = ""
+        map.style.gridTemplateRows = `repeat(${ROWS*shrinkGrow-cutoff}, minmax(0, 1fr))`;
+        map.style.gridTemplateColumns = `repeat(${COLUMNS*shrinkGrow-cutoff}, minmax(0, 1fr))`;
+        console.log(`Map is ${ROWS * shrinkGrow - cutoff} by ${COLUMNS * shrinkGrow - cutoff}.\nNormal Rows is ${ROWS} by ${COLUMNS}, but the factor is ${shrinkGrow} with a cutoff of ${cutoff}`)
+        for(let i = 0; i < ROWS * shrinkGrow - cutoff; i++) {
+          for(let j = 0; j < COLUMNS * shrinkGrow - cutoff; j++) {
+            let originalTemp = noiseMatrices[0][(Math.floor(i/shrinkGrow) * COLUMNS) + Math.floor(j/shrinkGrow)]
+            let originalMoisture = noiseMatrices[1][(Math.floor(i/shrinkGrow) * COLUMNS) + Math.floor(j/shrinkGrow)]
             let temp = Math.floor((originalTemp * numRowsToCut)) //0-numRowsToCut
             let moisture = Math.floor((originalMoisture * 3))
-            let alt = noiseMatrices[2][(i * ROWS) + j]
-            if(i % 50 == 0 && j % 50 == 0 || originalTemp > 0.2 || originalMoisture > 0.2) {
-              // console.log(`${i}, ${j}`)
-              // console.log(`Temp: ${originalTemp}, Moisture: ${originalMoisture}, Altitude: ${alt}`)
-              // console.log(`Calculate Temp: ${originalTemp*numRowsToCut}, Calculated Moisture: ${originalMoisture*numColsToCut}\n`)
-              // console.log(`Formatted Temp: ${temp}, Formatted Moisture: ${moisture}\n`)
-            }
-            map.style.gridTemplateRows = `repeat(${ROWS}, minmax(0, 1fr))`;
-            map.style.gridTemplateColumns = `repeat(${COLUMNS}, minmax(0, 1fr))`;
-            let image = new Image()
-            let index = (temp * numColsToCut) + moisture
+            let alt = noiseMatrices[2][(Math.floor(i/shrinkGrow) * ROWS) + Math.floor(j/shrinkGrow)]
+            let random = Math.floor(Math.random()*8) // 3/8ths chance of altering the value
             const oceanThreshold = 0.5
             const mountainThreshold = 0.7
+            const oceanMargin = 0.15
+            switch(random) {
+              case 1, 2:
+                if(alt <= oceanThreshold && alt >= 0.1) {
+                  let random = Math.floor(Math.random() * 2)
+                  random == 0 ? alt += 0.1 : alt -= 0.1
+                }
+                break;
+              default:
+                console.log("No Change")
+                break;
+            }
+            let image = new Image()
+            let index = (temp * numColsToCut) + moisture
 
             if(alt <= oceanThreshold) {
               // console.log(alt)
               // console.log("Lower than ", threshold)
               index = (Math.floor((alt/oceanThreshold) * numRowsToCut)) * numColsToCut //Scale between the number of rows
-              console.log("Row: ", index)
+              // console.log("Row: ", index)
               index += 3
-              console.log("Index: ", index)
+              // console.log("Index: ", index)
               // console.log(tileMap[index])
             } 
             if(alt > mountainThreshold) {
@@ -169,6 +196,13 @@
             map.appendChild(image)
           }
         }
+      }
+
+      function generateMap() {
+        noiseMatrices=[]
+        console.log("Generate map")
+        noiseAssembly()
+        assembleMap()
       }
 
       image.onload = cutImageUp;
@@ -197,86 +231,8 @@
           }
         }
         console.log("Map: ", tileMap);
-        noiseAssembly()
-        assembleMap()
+        generateMap()
 // imagePieces now contains data urls of all the pieces of the image
-      }
-    </script>
-    <script>
-      function generatePerlinNoise(width, height, options) {
-        options = options || {};
-        var octaveCount = options.octaveCount || 4;
-        var amplitude = options.amplitude || 0.1;
-        var persistence = options.persistence || 0.2;
-        var whiteNoise = generateWhiteNoise(width, height);
-
-        var smoothNoiseList = new Array(octaveCount);
-        var i;
-        for (i = 0; i < octaveCount; ++i) {
-          smoothNoiseList[i] = generateSmoothNoise(i);
-        }
-        var perlinNoise = new Array(width * height);
-        var totalAmplitude = 0;
-        // blend noise together
-        for (i = octaveCount - 1; i >= 0; --i) {
-          amplitude *= persistence;
-          totalAmplitude += amplitude;
-
-          for (var j = 0; j < perlinNoise.length; ++j) {
-            perlinNoise[j] = perlinNoise[j] || 0;
-            perlinNoise[j] += smoothNoiseList[i][j] * amplitude;
-          }
-        }
-        // normalization
-        for (i = 0; i < perlinNoise.length; ++i) {
-          perlinNoise[i] /= totalAmplitude;
-        }
-
-        return perlinNoise;
-
-        function generateSmoothNoise(octave) {
-          var noise = new Array(width * height);
-          var samplePeriod = Math.pow(2, octave);
-          var sampleFrequency = 1 / samplePeriod;
-          var noiseIndex = 0;
-          for (var y = 0; y < height; ++y) {
-            var sampleY0 = Math.floor(y / samplePeriod) * samplePeriod;
-            var sampleY1 = (sampleY0 + samplePeriod) % height;
-            var vertBlend = (y - sampleY0) * sampleFrequency;
-            for (var x = 0; x < width; ++x) {
-              var sampleX0 = Math.floor(x / samplePeriod) * samplePeriod;
-              var sampleX1 = (sampleX0 + samplePeriod) % width;
-              var horizBlend = (x - sampleX0) * sampleFrequency;
-
-              // blend top two corners
-              var top = interpolate(
-                whiteNoise[sampleY0 * width + sampleX0],
-                whiteNoise[sampleY1 * width + sampleX0],
-                vertBlend
-              );
-              // blend bottom two corners
-              var bottom = interpolate(
-                whiteNoise[sampleY0 * width + sampleX1],
-                whiteNoise[sampleY1 * width + sampleX1],
-                vertBlend
-              );
-              // final blend
-              noise[noiseIndex] = interpolate(top, bottom, horizBlend);
-              noiseIndex += 1;
-            }
-          }
-          return noise;
-        }
-      }
-      function generateWhiteNoise(width, height) {
-        var noise = new Array(width * height);
-        for (var i = 0; i < noise.length; ++i) {
-          noise[i] = Math.random();
-        }
-        return noise;
-      }
-      function interpolate(x0, x1, alpha) {
-        return x0 * (1 - alpha) + alpha * x1;
       }
     </script>
   </body>
